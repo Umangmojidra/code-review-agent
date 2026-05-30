@@ -14,7 +14,7 @@ print(f"Response: {r.json()}\n")
 print("Testing /review...")
 r = requests.post(
     f"{BASE_URL}/review",
-    json={"source": "E:/AI-Agents-Journey/day05_Project/sample_code.py"}
+    json={"source": "https://github.com/Umangmojidra/creditguard-retail-lending-risk-intelligence/blob/main/src/eda_analysis.py"}
 )
 print(f"Status: {r.status_code}")
 data = r.json()

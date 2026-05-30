@@ -93,6 +93,7 @@ async def run_mcp_agent(
                             arguments=block.input
                         )
                         output = result.content[0].text if result.content else "No output"
+                        print(f"      → Tool output preview: {repr(output[:200])}")
                     except Exception as e:
                         output = f"Tool error: {str(e)}"
 
@@ -118,30 +119,25 @@ async def run_code_fetcher(source: str) -> str:
     is_url = source.startswith("http")
 
     if is_url:
+        # Plain requests — we already know the exact URL, no MCP needed
+        # MCP fetch is only for when Claude needs to decide what to browse
+        import requests
         raw_url = source.replace(
             "github.com", "raw.githubusercontent.com"
         ).replace("/blob/", "/")
+        response = requests.get(raw_url, timeout=15)
+        response.raise_for_status()
+        result = response.text
+        print(f"  [Code Fetcher] Fetched URL directly")
 
-        server_params = get_fetch_server_params()
-        async with stdio_client(server_params) as (read, write):
-            async with ClientSession(read, write) as session:
-                await session.initialize()
-                result = await run_mcp_agent(
-                    session,
-                    system_prompt="""You are a code fetcher specialist.
-Your only job is to fetch code from URLs and return the raw content.
-Do not analyse, do not comment. Just fetch and return the code exactly as-is.""",
-                    user_message=f"Fetch the raw code from this URL and return it exactly as-is: {raw_url}"
-                )
     else:
-        # ── Read local file with plain Python — fast, no MCP overhead ──
+        # Local file — plain Python, same reason
         with open(source, "r", encoding="utf-8") as f:
             result = f.read()
         print(f"  [Code Fetcher] Read local file directly")
 
     print(f"  [Code Fetcher] Done — fetched {len(result)} characters")
     return result
-
 # ══════════════════════════════════════════════════════
 # SUBAGENT 2A — BUG DETECTIVE
 # Specialist: finds only bugs and logic errors.
@@ -389,11 +385,11 @@ async def run_code_review(source: str):
 if __name__ == "__main__":
 
     # Test 1: Local file review
-    local_file = os.path.join(DAY05_PATH, "sample_code.py")
-    asyncio.run(run_code_review(local_file))
+    # local_file = os.path.join(DAY05_PATH, "sample_code.py")
+    # asyncio.run(run_code_review(local_file))
 
     # Test 2: GitHub file review (your own repo)
     # Replace with any real Python file from GitHub
-    # asyncio.run(run_code_review(
-    #     "https://github.com/yourusername/yourrepo/blob/main/yourfile.py"
-    # ))
+    asyncio.run(run_code_review(
+        "https://github.com/Umangmojidra/creditguard-retail-lending-risk-intelligence/blob/main/src/eda_analysis.py"
+    ))
